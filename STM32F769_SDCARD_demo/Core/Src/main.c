@@ -46,8 +46,6 @@ SD_HandleTypeDef hsd2;
 
 UART_HandleTypeDef huart1;
 
-SDRAM_HandleTypeDef hsdram2;
-
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -57,9 +55,8 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART1_UART_Init(void);
 static void MX_SDMMC2_SD_Init(void);
-static void MX_FMC_Init(void);
 /* USER CODE BEGIN PFP */
-
+FRESULT scan_files (char* path);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -74,10 +71,15 @@ static void MX_FMC_Init(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-	BSP_SD_CardInfo info;
-	FATFS *fs;
+
   /* USER CODE END 1 */
   
+
+  /* Enable I-Cache---------------------------------------------------------*/
+  SCB_EnableICache();
+
+  /* Enable D-Cache---------------------------------------------------------*/
+  SCB_EnableDCache();
 
   /* MCU Configuration--------------------------------------------------------*/
 
@@ -100,22 +102,46 @@ int main(void)
   MX_USART1_UART_Init();
   MX_SDMMC2_SD_Init();
   MX_FATFS_Init();
-  MX_FMC_Init();
   /* USER CODE BEGIN 2 */
-  if(BSP_SD_IsDetected() == SD_PRESENT) {
+
+  /*if(BSP_SD_IsDetected() == SD_PRESENT) {
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"SDCARD OK", 9, HAL_MAX_DELAY);
   } else {
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"SDCARD NOK", 10, HAL_MAX_DELAY);
+  }*/
+
+  FRESULT res;
+  FATFS SDFatFs;
+  FIL myFile;
+  char buffwr[30] = "This is Test programming\n\r";
+  char buffrd[30];
+  char SDPath[10];
+  uint32_t byteswritten, bytesread;
+
+  res = BSP_SD_Init();
+  if(res != FR_OK) {
+	  Error_Handler();
   }
 
-  BSP_SD_Init();
-  BSP_SD_GetCardInfo(&info);
-  fs = malloc(sizeof(FATFS));
-  if(f_mount(fs, "", 1) == FR_OK) {
-	  HAL_UART_Transmit(&huart1, (uint8_t *)"MOUNT OK", 8, HAL_MAX_DELAY);
-  } else {
-	  HAL_UART_Transmit(&huart1, (uint8_t *)"MOUNT NOK", 9, HAL_MAX_DELAY);
+  res = f_mount(&SDFatFs, "", 1);
+  if(res != FR_OK) {
+	  Error_Handler();
   }
+
+  res = f_open(&myFile, "test123.txt", FA_OPEN_ALWAYS|FA_WRITE|FA_READ);
+  if(res != FR_OK) {
+	  Error_Handler();
+  }
+
+  res = f_lseek(&myFile, f_size(&myFile));
+  if(res != FR_OK) {
+	  Error_Handler();
+  }
+
+  res = f_close(&myFile);
+
+
+
 
   /* USER CODE END 2 */
 
@@ -150,10 +176,8 @@ void SystemClock_Config(void)
   __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
   /** Initializes the CPU, AHB and APB busses clocks 
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI|RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLM = 25;
@@ -198,7 +222,6 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
-  HAL_RCC_MCOConfig(RCC_MCO1, RCC_MCO1SOURCE_HSI, RCC_MCODIV_1);
 }
 
 /**
@@ -264,53 +287,6 @@ static void MX_USART1_UART_Init(void)
 
 }
 
-/* FMC initialization function */
-static void MX_FMC_Init(void)
-{
-
-  /* USER CODE BEGIN FMC_Init 0 */
-
-  /* USER CODE END FMC_Init 0 */
-
-  FMC_SDRAM_TimingTypeDef SdramTiming = {0};
-
-  /* USER CODE BEGIN FMC_Init 1 */
-
-  /* USER CODE END FMC_Init 1 */
-
-  /** Perform the SDRAM2 memory initialization sequence
-  */
-  hsdram2.Instance = FMC_SDRAM_DEVICE;
-  /* hsdram2.Init */
-  hsdram2.Init.SDBank = FMC_SDRAM_BANK1;
-  hsdram2.Init.ColumnBitsNumber = FMC_SDRAM_COLUMN_BITS_NUM_8;
-  hsdram2.Init.RowBitsNumber = FMC_SDRAM_ROW_BITS_NUM_12;
-  hsdram2.Init.MemoryDataWidth = FMC_SDRAM_MEM_BUS_WIDTH_8;
-  hsdram2.Init.InternalBankNumber = FMC_SDRAM_INTERN_BANKS_NUM_4;
-  hsdram2.Init.CASLatency = FMC_SDRAM_CAS_LATENCY_1;
-  hsdram2.Init.WriteProtection = FMC_SDRAM_WRITE_PROTECTION_DISABLE;
-  hsdram2.Init.SDClockPeriod = FMC_SDRAM_CLOCK_DISABLE;
-  hsdram2.Init.ReadBurst = FMC_SDRAM_RBURST_DISABLE;
-  hsdram2.Init.ReadPipeDelay = FMC_SDRAM_RPIPE_DELAY_0;
-  /* SdramTiming */
-  SdramTiming.LoadToActiveDelay = 16;
-  SdramTiming.ExitSelfRefreshDelay = 16;
-  SdramTiming.SelfRefreshTime = 16;
-  SdramTiming.RowCycleDelay = 16;
-  SdramTiming.WriteRecoveryTime = 16;
-  SdramTiming.RPDelay = 16;
-  SdramTiming.RCDDelay = 16;
-
-  if (HAL_SDRAM_Init(&hsdram2, &SdramTiming) != HAL_OK)
-  {
-    Error_Handler( );
-  }
-
-  /* USER CODE BEGIN FMC_Init 2 */
-
-  /* USER CODE END FMC_Init 2 */
-}
-
 /**
   * @brief GPIO Initialization Function
   * @param None
@@ -359,6 +335,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF11_ETH;
   HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : FMC_NBL1_Pin FMC_NBL0_Pin FMC_D5_Pin FMC_D6_Pin 
+                           FMC_D8_Pin FMC_D11_Pin FMC_D4_Pin FMC_D7_Pin 
+                           FMC_D9_Pin FMC_D12_Pin FMC_D10_Pin */
+  GPIO_InitStruct.Pin = FMC_NBL1_Pin|FMC_NBL0_Pin|FMC_D5_Pin|FMC_D6_Pin 
+                          |FMC_D8_Pin|FMC_D11_Pin|FMC_D4_Pin|FMC_D7_Pin 
+                          |FMC_D9_Pin|FMC_D12_Pin|FMC_D10_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
+  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
 
   /*Configure GPIO pins : ARDUINO_SCL_D15_Pin ARDUINO_SDA_D14_Pin */
   GPIO_InitStruct.Pin = ARDUINO_SCL_D15_Pin|ARDUINO_SDA_D14_Pin;
@@ -410,6 +398,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF10_QUADSPI;
   HAL_GPIO_Init(QSPI_NCS_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : FMC_SDNCAS_Pin FMC_SDCLK_Pin FMC_A11_Pin FMC_A12_Pin 
+                           FMC_A10_Pin FMC_BA1_Pin FMC_BA0_Pin */
+  GPIO_InitStruct.Pin = FMC_SDNCAS_Pin|FMC_SDCLK_Pin|FMC_A11_Pin|FMC_A12_Pin 
+                          |FMC_A10_Pin|FMC_BA1_Pin|FMC_BA0_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
+  HAL_GPIO_Init(GPIOG, &GPIO_InitStruct);
+
   /*Configure GPIO pins : LD_USER1_Pin Audio_INT_Pin WIFI_RST_Pin ARD_D8_Pin 
                            LD_USER2_Pin ARD_D7_Pin ARD_D4_Pin ARD_D2_Pin */
   GPIO_InitStruct.Pin = LD_USER1_Pin|Audio_INT_Pin|WIFI_RST_Pin|ARD_D8_Pin 
@@ -417,6 +415,16 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOJ, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : FMC_D2_Pin FMC_D3_Pin FMC_D1_Pin FMC_D15_Pin 
+                           FMC_D0_Pin FMC_D14_Pin FMC_D13_Pin */
+  GPIO_InitStruct.Pin = FMC_D2_Pin|FMC_D3_Pin|FMC_D1_Pin|FMC_D15_Pin 
+                          |FMC_D0_Pin|FMC_D14_Pin|FMC_D13_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
+  HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
   /*Configure GPIO pin : DFSDM_DATIN5_Pin */
   GPIO_InitStruct.Pin = DFSDM_DATIN5_Pin;
@@ -446,6 +454,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Pin = NC4_Pin|NC5_Pin|LCD_BL_CTRL_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : FMC_NBL2_Pin D27_Pin D26_Pin FMC_NBL3_Pin 
+                           D29_Pin D31_Pin D28_Pin D25_Pin 
+                           D30_Pin D24_Pin */
+  GPIO_InitStruct.Pin = FMC_NBL2_Pin|D27_Pin|D26_Pin|FMC_NBL3_Pin 
+                          |D29_Pin|D31_Pin|D28_Pin|D25_Pin 
+                          |D30_Pin|D24_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
   HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
 
   /*Configure GPIO pins : NC3_Pin NC2_Pin NC1_Pin NC8_Pin 
@@ -486,6 +506,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Alternate = GPIO_AF5_SPI2;
   HAL_GPIO_Init(SPI2_NSS_GPIO_Port, &GPIO_InitStruct);
 
+  /*Configure GPIO pins : FMC_A0_Pin FMC_A1_Pin FMC_A2_Pin FMC_A3_Pin 
+                           FMC_A4_Pin FMC_A5_Pin FMC_A6_Pin FMC_A9_Pin 
+                           FMC_A7_Pin FMC_A8_Pin FMC_SDNRAS_Pin */
+  GPIO_InitStruct.Pin = FMC_A0_Pin|FMC_A1_Pin|FMC_A2_Pin|FMC_A3_Pin 
+                          |FMC_A4_Pin|FMC_A5_Pin|FMC_A6_Pin|FMC_A9_Pin 
+                          |FMC_A7_Pin|FMC_A8_Pin|FMC_SDNRAS_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
+  HAL_GPIO_Init(GPIOF, &GPIO_InitStruct);
+
   /*Configure GPIO pin : DSI_RESET_Pin */
   GPIO_InitStruct.Pin = DSI_RESET_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
@@ -500,6 +532,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
   GPIO_InitStruct.Alternate = GPIO_AF8_UART5;
   HAL_GPIO_Init(WIFI_TX_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pins : D23_Pin D21_Pin D22_Pin FMC_SDNME_Pin 
+                           FMC_SDNE0_Pin FMC_SDCKE0_Pin D20_Pin FMC_D_7_Pin 
+                           FMC_D19_Pin FMC_D16_Pin FMC_D18_Pin */
+  GPIO_InitStruct.Pin = D23_Pin|D21_Pin|D22_Pin|FMC_SDNME_Pin 
+                          |FMC_SDNE0_Pin|FMC_SDCKE0_Pin|D20_Pin|FMC_D_7_Pin 
+                          |FMC_D19_Pin|FMC_D16_Pin|FMC_D18_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+  GPIO_InitStruct.Alternate = GPIO_AF12_FMC;
+  HAL_GPIO_Init(GPIOH, &GPIO_InitStruct);
 
   /*Configure GPIO pin : ULPI_DIR_Pin */
   GPIO_InitStruct.Pin = ULPI_DIR_Pin;
@@ -704,6 +748,37 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+
+FRESULT scan_files (
+    char* path        /* Start node to be scanned (***also used as work area***) */
+)
+{
+    FRESULT res;
+    DIR dir;
+    UINT i;
+    static FILINFO fno;
+
+
+    res = f_opendir(&dir, path);                       /* Open the directory */
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);                   /* Read a directory item */
+            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+                i = strlen(path);
+                sprintf(&path[i], "/%s", fno.fname);
+                res = scan_files(path);                    /* Enter the directory */
+                if (res != FR_OK) break;
+                path[i] = 0;
+            } else {                                       /* It is a file. */
+                printf("%s/%s\n", path, fno.fname);
+            }
+        }
+        f_closedir(&dir);
+    }
+
+    return res;
+}
 
 /* USER CODE END 4 */
 
