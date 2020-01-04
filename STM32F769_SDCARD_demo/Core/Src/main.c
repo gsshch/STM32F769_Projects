@@ -22,8 +22,13 @@
 #include "main.h"
 #include "fatfs.h"
 
+
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "ff.h"
+#include "../../Middlewares/Third_Party/FatFs/src/ff.h"
+#include <stdio.h>
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -104,11 +109,11 @@ int main(void)
   MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
 
-  /*if(BSP_SD_IsDetected() == SD_PRESENT) {
+  if(BSP_SD_IsDetected() == SD_PRESENT) {
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"SDCARD OK", 9, HAL_MAX_DELAY);
   } else {
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"SDCARD NOK", 10, HAL_MAX_DELAY);
-  }*/
+  }
 
   FRESULT res;
   FATFS SDFatFs;
@@ -116,6 +121,8 @@ int main(void)
   char buffwr[30] = "This is Test programming\n\r";
   char buffrd[30];
   char SDPath[10];
+  char buff[256];
+  TCHAR str[30];
   uint32_t byteswritten, bytesread;
 
   res = BSP_SD_Init();
@@ -127,6 +134,13 @@ int main(void)
   if(res != FR_OK) {
 	  Error_Handler();
   }
+
+  strcpy(buff, "/");
+  res = scan_files(buff);
+  if(res != FR_OK) {
+ 	  Error_Handler();
+   }
+
 
   res = f_open(&myFile, "test123.txt", FA_OPEN_ALWAYS|FA_WRITE|FA_READ);
   if(res != FR_OK) {
@@ -155,6 +169,42 @@ int main(void)
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
+}
+
+FRESULT scan_files (
+    char* path        /* Start node to be scanned (***also used as work area***) */
+)
+{
+    FRESULT res;
+    DIR dir;
+    UINT i;
+    static FILINFO fno;
+
+
+    res = f_opendir(&dir, path);                       /* Open the directory */
+    if (res == FR_OK) {
+        for (;;) {
+            res = f_readdir(&dir, &fno);                   /* Read a directory item */
+            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+                i = strlen(path);
+                sprintf(&path[i], "/%s", fno.fname);
+                HAL_UART_Transmit(&huart1, &path[i], strlen(&path[i]), HAL_MAX_DELAY);
+                HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY);
+                res = scan_files(path);                    /* Enter the directory */
+                if (res != FR_OK) break;
+                path[i] = 0;
+            } else {                                       /* It is a file. */
+                printf("%s/%s\n", path, fno.fname);
+                HAL_UART_Transmit(&huart1, fno.fname, strlen(fno.fname), HAL_MAX_DELAY);
+                HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY);
+
+            }
+        }
+        f_closedir(&dir);
+    }
+
+    return res;
 }
 
 /**
@@ -748,37 +798,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-FRESULT scan_files (
-    char* path        /* Start node to be scanned (***also used as work area***) */
-)
-{
-    FRESULT res;
-    DIR dir;
-    UINT i;
-    static FILINFO fno;
-
-
-    res = f_opendir(&dir, path);                       /* Open the directory */
-    if (res == FR_OK) {
-        for (;;) {
-            res = f_readdir(&dir, &fno);                   /* Read a directory item */
-            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
-            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
-                i = strlen(path);
-                sprintf(&path[i], "/%s", fno.fname);
-                res = scan_files(path);                    /* Enter the directory */
-                if (res != FR_OK) break;
-                path[i] = 0;
-            } else {                                       /* It is a file. */
-                printf("%s/%s\n", path, fno.fname);
-            }
-        }
-        f_closedir(&dir);
-    }
-
-    return res;
-}
 
 /* USER CODE END 4 */
 
