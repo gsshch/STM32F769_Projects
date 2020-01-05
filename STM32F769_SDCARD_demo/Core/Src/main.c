@@ -121,13 +121,8 @@ int main(void)
 
   FRESULT res;
   FATFS SDFatFs;
-  FIL myFile;
-  char buffwr[30] = "This is Test programming\n\r";
-  char buffrd[30];
-  char SDPath[10];
   char buff[256];
-  TCHAR str[30];
-  uint32_t byteswritten, bytesread;
+
 
   res = BSP_SD_Init();
   if(res != FR_OK) {
