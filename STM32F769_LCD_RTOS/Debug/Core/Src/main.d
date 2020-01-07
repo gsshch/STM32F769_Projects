@@ -54,11 +54,11 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/otm8009a/otm8009a.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/adv7533/adv7533.h \
- d:\projects\stm32cubeide\stm32f769_lcd_rtos\drivers\bsp\components\common\audio.h \
+ ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/adv7533/../Common/audio.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/stm32f769i_discovery_sdram.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Fonts/fonts.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/ft6x06/ft6x06.h \
- d:\projects\stm32cubeide\stm32f769_lcd_rtos\drivers\bsp\components\common\ts.h \
+ ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/ft6x06/../Common/ts.h \
  ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h
 
 ../Core/Inc/main.h:
@@ -173,7 +173,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 
 ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/adv7533/adv7533.h:
 
-d:\projects\stm32cubeide\stm32f769_lcd_rtos\drivers\bsp\components\common\audio.h:
+../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/adv7533/../Common/audio.h:
 
 ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/stm32f769i_discovery_sdram.h:
 
@@ -181,6 +181,6 @@ d:\projects\stm32cubeide\stm32f769_lcd_rtos\drivers\bsp\components\common\audio.
 
 ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/ft6x06/ft6x06.h:
 
-d:\projects\stm32cubeide\stm32f769_lcd_rtos\drivers\bsp\components\common\ts.h:
+../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/../Components/ft6x06/../Common/ts.h:
 
 ../Core/Src/../../Drivers/BSP/STM32F769I-Discovery/stm32f769i_discovery_lcd.h:
