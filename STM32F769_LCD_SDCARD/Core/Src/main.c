@@ -61,6 +61,7 @@ UART_HandleTypeDef huart1;
 SDRAM_HandleTypeDef hsdram2;
 
 /* USER CODE BEGIN PV */
+int yPos = 20;
 
 /* USER CODE END PV */
 
@@ -139,7 +140,7 @@ int main(void)
   BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
   BSP_LCD_SetBackColor(LCD_COLOR_BLUE);
   BSP_LCD_SetFont(&Font24);
-  BSP_LCD_DisplayStringAt(0, 0, (uint8_t *)"Touchscreen basic test", CENTER_MODE);
+  BSP_LCD_DisplayStringAt(0, 0, (uint8_t *)"Projekt za predmet vgrajeni sistemi", CENTER_MODE);
 
   if(BSP_SD_IsDetected() == SD_PRESENT) {
 	  HAL_UART_Transmit(&huart1, (uint8_t *)"SDCARD OK", 9, HAL_MAX_DELAY);
@@ -151,23 +152,23 @@ int main(void)
 
   }
 
-  FRESULT res;
+  FRESULT res; /* Variable that shows the status of fatfs functions */
   FATFS SDFatFs;
   char buff[256];
 
 
-  res = BSP_SD_Init();
+  res = BSP_SD_Init(); /* Initialize SD card, if initialization is not complete the value if res will be different than FR_OK */
   if(res != FR_OK) {
 	  Error_Handler();
   }
 
-  res = f_mount(&SDFatFs, "", 1);
+  res = f_mount(&SDFatFs, "", 1); /* Mount the SD card and register the work area*/
   if(res != FR_OK) {
 	  Error_Handler();
   }
 
   strcpy(buff, "/");
-  res = scan_files(buff);
+  res = scan_files(buff); /* Search the SD card for directories and files */
   if(res != FR_OK) {
 	  Error_Handler();
   }
@@ -955,36 +956,49 @@ FRESULT scan_files (
     char* path        /* Start node to be scanned (***also used as work area***) */
 )
 {
-    FRESULT res;
-    DIR dir;
-    UINT i;
-    static FILINFO fno;
+	FRESULT res;
+	DIR dir;
+	UINT i;
+	static FILINFO fno;
+
+	int xPosDir = 10;
+	int xPosFile = 30;
+
+	BSP_LCD_SetTextColor(LCD_COLOR_BLACK); /* Set color of text to be displayed to balck */
+	BSP_LCD_SetBackColor(LCD_COLOR_WHITE);
+
+	res = f_opendir(&dir, path);                       /* Open the directory */
+	if (res == FR_OK) {
+		for (;;) {
+			res = f_readdir(&dir, &fno);                   /* Read a directory item */
+			if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
+			if (fno.fattrib & AM_DIR) {                    /* It is a directory */
+				i = strlen(path);
+				sprintf(&path[i], "/%s", fno.fname); /* Build string to display */
+				HAL_UART_Transmit(&huart1, &path[i], strlen(&path[i]), HAL_MAX_DELAY); /* Send directory name to UART */
+				HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY); /* Send new line to UART */
+
+				yPos = yPos + 20;
+				BSP_LCD_DisplayStringAt(xPosDir, yPos, &path[i], LEFT_MODE); /* Display directory name to lcd */
+
+				res = scan_files(path);                    /* Enter the directory */
+				if (res != FR_OK) break;
+				path[i] = 0;
+			} else {                                       /* It is a file. */
+				printf("%s/%s\n", path, fno.fname); /* TEST IF YOU NEED THIS */
+				HAL_UART_Transmit(&huart1, fno.fname, strlen(fno.fname), HAL_MAX_DELAY); /* Send file name to UART */
+				HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY); /* Send new line to UART */
+
+				yPos = yPos + 20;
+
+				BSP_LCD_DisplayStringAt(xPosFile, yPos, fno.fname, LEFT_MODE); /* Display file name to lcd */
 
 
-    res = f_opendir(&dir, path);                       /* Open the directory */
-    if (res == FR_OK) {
-        for (;;) {
-            res = f_readdir(&dir, &fno);                   /* Read a directory item */
-            if (res != FR_OK || fno.fname[0] == 0) break;  /* Break on error or end of dir */
-            if (fno.fattrib & AM_DIR) {                    /* It is a directory */
-                i = strlen(path);
-                sprintf(&path[i], "/%s", fno.fname);
-                HAL_UART_Transmit(&huart1, &path[i], strlen(&path[i]), HAL_MAX_DELAY);
-                HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY);
-                res = scan_files(path);                    /* Enter the directory */
-                if (res != FR_OK) break;
-                path[i] = 0;
-            } else {                                       /* It is a file. */
-                printf("%s/%s\n", path, fno.fname);
-                HAL_UART_Transmit(&huart1, fno.fname, strlen(fno.fname), HAL_MAX_DELAY);
-                HAL_UART_Transmit(&huart1, (uint8_t *) "\n\r", 2, HAL_MAX_DELAY);
-
-            }
-        }
-        f_closedir(&dir);
-    }
-
-    return res;
+			}
+		}
+		f_closedir(&dir);
+	}
+	return res;
 }
 
 /* USER CODE END 4 */
